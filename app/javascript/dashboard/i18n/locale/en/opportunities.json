@@ -1,0 +1,37 @@
+{
+  "OPPORTUNITIES": {
+    "KANBAN": {
+      "TITLE": "Opportunities Kanban",
+      "CREATE_BUTTON": "New Opportunity",
+      "CARDS": "cards",
+      "EMPTY_STAGE": "No opportunities in this stage",
+      "ERROR_FETCH": "Error loading opportunities",
+      "ERROR_UPDATE": "Error updating stage",
+      "STAGE_UPDATED": "Stage updated successfully",
+      "FILTERS": {
+        "AGENT": "Agent",
+        "AGENT_PLACEHOLDER": "Agent ID",
+        "PRIORITY": "Priority",
+        "ALL": "All",
+        "DATE_START": "Start date",
+        "DATE_END": "End date"
+      }
+    },
+    "STAGES": {
+      "NEW_LEAD": "New Lead",
+      "QUALIFICATION": "Qualification",
+      "SCHEDULING_PENDING": "Scheduling Pending",
+      "APPOINTMENT_SCHEDULED": "Appointment Scheduled",
+      "APPOINTMENT_CONFIRMED": "Appointment Confirmed",
+      "COMPLETED": "Completed",
+      "FOLLOW_UP": "Follow-up"
+    },
+    "PRIORITY": {
+      "LOW": "Low",
+      "MEDIUM": "Medium",
+      "HIGH": "High",
+      "URGENT": "Urgent"
+    }
+  }
+}
+
