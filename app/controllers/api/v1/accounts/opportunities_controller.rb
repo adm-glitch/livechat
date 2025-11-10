@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength
 class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseController
   RESULTS_PER_PAGE = 20
 
@@ -63,89 +64,25 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
   # Custom collection actions
 
   def kanban
-    opportunities = filtered_opportunities.active
-    opportunities = opportunities.where(assigned_agent_id: params[:assigned_agent_id]) if params[:assigned_agent_id].present?
-    opportunities = opportunities.where(priority: params[:priority]) if params[:priority].present?
-
-    # Aplica filtro de data range se fornecido
-    if params[:start_date].present? && params[:end_date].present?
-      opportunities = opportunities.where(created_at: Date.parse(params[:start_date])..Date.parse(params[:end_date]).end_of_day)
-    end
-
-    # Agrupa por stage
-    stages_data = Opportunity.stages.keys.map do |stage_key|
-      stage_opportunities = opportunities.where(stage: stage_key)
-                                         .order(priority: :desc, updated_at: :desc)
-                                         .includes(:contact, :assigned_agent, :conversation, :created_by)
-
-      {
-        key: stage_key,
-        name: I18n.t("opportunities.stages.#{stage_key}", default: stage_key.humanize),
-        opportunities: stage_opportunities,
-        count: stage_opportunities.count,
-        total_value: stage_opportunities.sum(:estimated_value).to_f
-      }
-    end
-
-    totals = {
-      count: opportunities.count,
-      value: opportunities.sum(:estimated_value).to_f
-    }
+    opportunities = apply_kanban_filters(filtered_opportunities.active)
+    stages = build_kanban_stages(opportunities)
 
     render json: {
-      stages: stages_data,
-      totals: totals
+      stages: stages,
+      totals: calculate_totals(opportunities)
     }
   end
 
   def pipeline_metrics
-    start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : 30.days.ago
-    end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : Date.current
-
-    opportunities = Current.account.opportunities
-                           .where(created_at: start_date..end_date.end_of_day)
-                           .where.not(closed_at: nil)
-
-    # Taxa de conversão
-    total_closed = opportunities.count
-    won_count = opportunities.where(status: :won).count
-    conversion_rate = total_closed.positive? ? (won_count.to_f / total_closed * 100).round(2) : 0.0
-
-    # Valor médio de negócios fechados
-    won_opportunities = opportunities.where(status: :won).where.not(estimated_value: nil)
-    average_deal_value = won_opportunities.any? ? won_opportunities.average(:estimated_value).to_f.round(2) : 0.0
-
-    # Tempo médio de ciclo (em dias)
-    cycle_times = opportunities.where.not(closed_at: nil).filter_map do |opp|
-      (opp.closed_at.to_date - opp.created_at.to_date).to_i if opp.closed_at.present?
-    end
-    average_cycle_time_days = cycle_times.any? ? (cycle_times.sum.to_f / cycle_times.size).round(2) : 0.0
-
-    # Por stage
-    by_stage = Opportunity.stages.keys.index_with do |stage_key|
-      stage_opps = opportunities.where(stage: stage_key)
-      stage_cycle_times = stage_opps.filter_map do |opp|
-        (opp.closed_at.to_date - opp.created_at.to_date).to_i if opp.closed_at.present?
-      end
-      avg_time = stage_cycle_times.any? ? (stage_cycle_times.sum.to_f / stage_cycle_times.size).round(2) : 0.0
-
-      {
-        count: stage_opps.count,
-        avg_time_days: avg_time
-      }
-    end
-
-    # Por fonte de indicação
-    by_referral_source = opportunities.where.not(referral_source: nil)
-                                      .group(:referral_source)
-                                      .count
+    start_date, end_date = parse_metrics_dates
+    opportunities = closed_opportunities_in_range(start_date, end_date)
 
     render json: {
-      conversion_rate: conversion_rate,
-      average_deal_value: average_deal_value,
-      average_cycle_time_days: average_cycle_time_days,
-      by_stage: by_stage,
-      by_referral_source: by_referral_source
+      conversion_rate: calculate_conversion_rate(opportunities),
+      average_deal_value: calculate_average_deal_value(opportunities),
+      average_cycle_time_days: calculate_average_cycle_time(opportunities),
+      by_stage: group_opportunities_by_stage(opportunities),
+      by_referral_source: group_opportunities_by_referral_source(opportunities)
     }
   end
 
@@ -185,19 +122,8 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
 
   def filtered_opportunities
     opportunities = Current.account.opportunities
-
-    # Filtros
-    opportunities = opportunities.by_stage(params[:stage]) if params[:stage].present?
-    opportunities = opportunities.by_status(params[:status]) if params[:status].present?
-    opportunities = opportunities.assigned_to(params[:assigned_agent_id]) if params[:assigned_agent_id].present?
-    opportunities = opportunities.where(priority: params[:priority]) if params[:priority].present?
-
-    # Date range filter
-    if params[:start_date].present? && params[:end_date].present?
-      opportunities = opportunities.where(created_at: Date.parse(params[:start_date])..Date.parse(params[:end_date]).end_of_day)
-    end
-
-    opportunities
+    opportunities = apply_basic_filters(opportunities)
+    apply_date_range_filter(opportunities)
   end
 
   def fetch_opportunity
@@ -233,4 +159,127 @@ class Api::V1::Accounts::OpportunitiesController < Api::V1::Accounts::BaseContro
 
     authorize(@opportunity, :update?)
   end
+
+  # Aplica filtros específicos para o kanban
+  def apply_kanban_filters(opportunities)
+    opportunities = opportunities.assigned_to(params[:assigned_agent_id]) if params[:assigned_agent_id].present?
+    opportunities = opportunities.where(priority: params[:priority]) if params[:priority].present?
+    apply_date_range_filter(opportunities)
+  end
+
+  # Constrói os dados de stages para o kanban
+  def build_kanban_stages(opportunities)
+    Opportunity.stages.keys.map { |stage_key| build_stage_data(opportunities, stage_key) }
+  end
+
+  # Constrói os dados de um stage específico
+  def build_stage_data(opportunities, stage_key)
+    stage_opportunities = opportunities.by_stage(stage_key)
+                                       .order(priority: :desc, updated_at: :desc)
+                                       .includes(:contact, :assigned_agent, :conversation, :created_by)
+
+    {
+      key: stage_key,
+      name: I18n.t("opportunities.stages.#{stage_key}", default: stage_key.humanize),
+      opportunities: stage_opportunities,
+      count: stage_opportunities.count,
+      total_value: stage_opportunities.sum(:estimated_value).to_f
+    }
+  end
+
+  # Calcula os totais do kanban
+  def calculate_totals(opportunities)
+    {
+      count: opportunities.count,
+      value: opportunities.sum(:estimated_value).to_f
+    }
+  end
+
+  # Parse das datas para métricas do pipeline
+  def parse_metrics_dates
+    start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : 30.days.ago
+    end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : Date.current
+    [start_date, end_date]
+  end
+
+  # Retorna oportunidades fechadas no range de datas
+  def closed_opportunities_in_range(start_date, end_date)
+    Current.account.opportunities
+           .where(created_at: start_date..end_date.end_of_day)
+           .where.not(closed_at: nil)
+  end
+
+  # Calcula a taxa de conversão
+  def calculate_conversion_rate(opportunities)
+    total_closed = opportunities.count
+    return 0.0 unless total_closed.positive?
+
+    won_count = opportunities.where(status: :won).count
+    (won_count.to_f / total_closed * 100).round(2)
+  end
+
+  # Calcula o valor médio de negócios fechados
+  def calculate_average_deal_value(opportunities)
+    won_opportunities = opportunities.where(status: :won).where.not(estimated_value: nil)
+    return 0.0 unless won_opportunities.any?
+
+    won_opportunities.average(:estimated_value).to_f.round(2)
+  end
+
+  # Calcula o tempo médio de ciclo em dias
+  def calculate_average_cycle_time(opportunities)
+    cycle_times = extract_cycle_times(opportunities)
+    return 0.0 unless cycle_times.any?
+
+    (cycle_times.sum.to_f / cycle_times.size).round(2)
+  end
+
+  # Extrai os tempos de ciclo das oportunidades
+  def extract_cycle_times(opportunities)
+    opportunities.filter_map do |opp|
+      next if opp.closed_at.blank?
+
+      (opp.closed_at.to_date - opp.created_at.to_date).to_i
+    end
+  end
+
+  # Agrupa oportunidades por stage com métricas
+  def group_opportunities_by_stage(opportunities)
+    Opportunity.stages.keys.index_with do |stage_key|
+      stage_opps = opportunities.where(stage: stage_key)
+      stage_cycle_times = extract_cycle_times(stage_opps)
+      avg_time = stage_cycle_times.any? ? (stage_cycle_times.sum.to_f / stage_cycle_times.size).round(2) : 0.0
+
+      {
+        count: stage_opps.count,
+        avg_time_days: avg_time
+      }
+    end
+  end
+
+  # Agrupa oportunidades por fonte de indicação
+  def group_opportunities_by_referral_source(opportunities)
+    opportunities.where.not(referral_source: nil)
+                 .group(:referral_source)
+                 .count
+  end
+
+  # Aplica filtros básicos (stage, status, assigned_agent, priority)
+  def apply_basic_filters(opportunities)
+    opportunities = opportunities.by_stage(params[:stage]) if params[:stage].present?
+    opportunities = opportunities.by_status(params[:status]) if params[:status].present?
+    opportunities = opportunities.assigned_to(params[:assigned_agent_id]) if params[:assigned_agent_id].present?
+    opportunities = opportunities.where(priority: params[:priority]) if params[:priority].present?
+    opportunities
+  end
+
+  # Aplica filtro de range de datas
+  def apply_date_range_filter(opportunities)
+    return opportunities unless params[:start_date].present? && params[:end_date].present?
+
+    start_date = Date.parse(params[:start_date])
+    end_date = Date.parse(params[:end_date])
+    opportunities.where(created_at: start_date..end_date.end_of_day)
+  end
 end
+# rubocop:enable Metrics/ClassLength
