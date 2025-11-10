@@ -1,0 +1,37 @@
+{
+  "OPPORTUNITIES": {
+    "KANBAN": {
+      "TITLE": "Kanban de Oportunidades",
+      "CREATE_BUTTON": "Nova Oportunidade",
+      "CARDS": "cards",
+      "EMPTY_STAGE": "Nenhuma oportunidade neste estágio",
+      "ERROR_FETCH": "Erro ao carregar oportunidades",
+      "ERROR_UPDATE": "Erro ao atualizar estágio",
+      "STAGE_UPDATED": "Estágio atualizado com sucesso",
+      "FILTERS": {
+        "AGENT": "Agente",
+        "AGENT_PLACEHOLDER": "ID do agente",
+        "PRIORITY": "Prioridade",
+        "ALL": "Todas",
+        "DATE_START": "Data inicial",
+        "DATE_END": "Data final"
+      }
+    },
+    "STAGES": {
+      "NEW_LEAD": "Novo Lead",
+      "QUALIFICATION": "Qualificação",
+      "SCHEDULING_PENDING": "Aguardando Agendamento",
+      "APPOINTMENT_SCHEDULED": "Consulta Agendada",
+      "APPOINTMENT_CONFIRMED": "Consulta Confirmada",
+      "COMPLETED": "Concluído",
+      "FOLLOW_UP": "Follow-up"
+    },
+    "PRIORITY": {
+      "LOW": "Baixa",
+      "MEDIUM": "Média",
+      "HIGH": "Alta",
+      "URGENT": "Urgente"
+    }
+  }
+}
+
