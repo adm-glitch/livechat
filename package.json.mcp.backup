@@ -1,0 +1,31 @@
+{
+  "name": "chatwoot-crm-mcp",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "mcp:index": "node .mcp/scripts/index.mjs",
+    "mcp:serve": "node .mcp/scripts/server.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@modelcontextprotocol/sdk": "^1.20.2",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "autoprefixer": "^10.4.21",
+    "fs-extra": "^11.3.2",
+    "glob": "^11.0.3",
+    "postcss": "^8.5.6",
+    "postcss-preset-env": "^10.4.0",
+    "tailwindcss": "^4.1.16",
+    "vite": "^7.1.12",
+    "vite-plugin-ruby": "^5.1.1",
+    "yaml": "^2.8.1"
+  }
+}

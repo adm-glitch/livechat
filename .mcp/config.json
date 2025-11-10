@@ -1,0 +1,39 @@
+{
+  "name": "chatwoot-crm-fork",
+  "version": "1.0.0",
+  "description": "Chatwoot fork com CRM integrado para saúde",
+  
+  "context": {
+    "index_path": ".mcp/context/index.json",
+    "update_on_file_change": true,
+    "watch_paths": [
+      "app/models",
+      "app/controllers",
+      "app/services",
+      "app/javascript",
+      "config/routes.rb",
+      "db/schema.rb"
+    ]
+  },
+  
+  "project_guidelines": {
+    "crm_models": [
+      "Opportunity",
+      "Task", 
+      "WorkflowRule",
+      "StageTransition"
+    ],
+    "base_chatwoot_models": [
+      "Contact",
+      "Conversation",
+      "Message",
+      "Account",
+      "User"
+    ],
+    "lgpd_requirements": {
+      "always_encrypt": ["cpf", "health_data", "medical_notes"],
+      "always_audit": ["contact.viewed", "contact.exported", "opportunity.created"],
+      "consent_required_for": ["ai_processing", "marketing"]
+    }
+  }
+}
