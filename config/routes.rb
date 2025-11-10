@@ -227,6 +227,19 @@ Rails.application.routes.draw do
             end
           end
 
+          resources :opportunities do
+            collection do
+              get 'kanban'
+              get 'pipeline_metrics'
+            end
+
+            member do
+              patch 'move_stage'
+              post 'mark_won'
+              post 'mark_lost'
+            end
+          end
+
           # Assignment V2 Routes
           resources :assignment_policies do
             resources :inboxes, only: [:index, :create, :destroy], module: :assignment_policies

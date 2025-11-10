@@ -1,0 +1,16 @@
+# Adicionar este bloco dentro de: namespace :api { namespace :v1 { resources :accounts { scope module: :accounts { } } } }
+# Sugestão: adicionar após resources :teams (linha ~228) ou antes de namespace :twitter (linha ~239)
+
+resources :opportunities do
+  collection do
+    get 'kanban'
+    get 'pipeline_metrics'
+  end
+
+  member do
+    patch 'move_stage'
+    post 'mark_won'
+    post 'mark_lost'
+  end
+end
+

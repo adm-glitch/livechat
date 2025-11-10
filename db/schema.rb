@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
+ActiveRecord::Schema[7.1].define(version: 2025_11_10_013130) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -570,6 +570,28 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
     t.index ["phone_number"], name: "index_channel_whatsapp_on_phone_number", unique: true
   end
 
+  create_table "comments", force: :cascade do |t|
+    t.text "content", null: false, comment: "Conteúdo do comentário"
+    t.string "commentable_type", null: false
+    t.bigint "commentable_id", null: false, comment: "Recurso ao qual o comentário pertence"
+    t.bigint "account_id", null: false, comment: "Conta (tenant) do comentário"
+    t.bigint "user_id", null: false, comment: "Usuário autor do comentário"
+    t.boolean "is_private", default: true, null: false, comment: "Se o comentário é privado (interno) ou público"
+    t.jsonb "metadata", default: {}, null: false, comment: "Dados extras (menções, tags, etc)"
+    t.datetime "edited_at", comment: "Data e hora da última edição"
+    t.datetime "deleted_at", comment: "Soft delete - data de exclusão lógica"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_comments_on_account_created_at"
+    t.index ["account_id"], name: "index_comments_on_account_id"
+    t.index ["commentable_type", "commentable_id"], name: "index_comments_on_commentable"
+    t.index ["created_at"], name: "index_comments_on_created_at"
+    t.index ["deleted_at"], name: "index_comments_on_deleted_at"
+    t.index ["is_private"], name: "index_comments_on_is_private"
+    t.index ["user_id", "created_at"], name: "index_comments_on_user_created_at"
+    t.index ["user_id"], name: "index_comments_on_user_id"
+  end
+
   create_table "companies", force: :cascade do |t|
     t.string "name", null: false
     t.string "domain"
@@ -676,7 +698,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
     t.index ["contact_id"], name: "index_conversations_on_contact_id"
     t.index ["contact_inbox_id"], name: "index_conversations_on_contact_inbox_id"
     t.index ["first_reply_created_at"], name: "index_conversations_on_first_reply_created_at"
-    t.index ["identifier", "account_id"], name: "index_conversations_on_identifier_and_account_id" 
+    t.index ["identifier", "account_id"], name: "index_conversations_on_identifier_and_account_id"
     t.index ["inbox_id"], name: "index_conversations_on_inbox_id"
     t.index ["priority"], name: "index_conversations_on_priority"
     t.index ["status", "account_id"], name: "index_conversations_on_status_and_account_id"
@@ -1030,6 +1052,45 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "opportunities", force: :cascade do |t|
+    t.string "opportunity_id", limit: 255, null: false, comment: "ID único da oportunidade gerado automaticamente"
+    t.string "title", limit: 255, null: false, comment: "Título da oportunidade"
+    t.text "description", comment: "Descrição detalhada da oportunidade"
+    t.string "service_type", comment: "Tipo de serviço (ex: Consulta Dermatológica, Procedimento Estético)"
+    t.decimal "estimated_value", precision: 10, scale: 2, comment: "Valor estimado do serviço"
+    t.date "suggested_appointment_date", comment: "Data sugerida para agendamento"
+    t.string "referral_source", comment: "Fonte de indicação (ex: Instagram, Google Ads, Indicação)"
+    t.text "lost_reason", comment: "Motivo da perda (preenchido quando status = lost)"
+    t.jsonb "consent_metadata", default: {}, null: false, comment: "Metadados de consentimento para marketing (LGPD)"
+    t.integer "status", default: 0, null: false, comment: "Status: 0=open, 1=won, 2=lost, 3=abandoned"
+    t.integer "priority", default: 1, null: false, comment: "Prioridade: 0=low, 1=medium, 2=high, 3=urgent"
+    t.integer "stage", default: 0, null: false, comment: "Estágio: 0=new_lead, 1=qualification, 2=scheduling_pending, 3=appointment_scheduled, 4=appointment_confirmed, 5=completed, 6=follow_up"
+    t.datetime "closed_at", comment: "Data de fechamento (won/lost/abandoned)"
+    t.datetime "deleted_at", comment: "Soft delete - data de exclusão lógica"
+    t.bigint "contact_id", null: false, comment: "Contato associado à oportunidade"
+    t.bigint "account_id", null: false, comment: "Conta (tenant) da oportunidade"
+    t.bigint "conversation_id", comment: "Conversa associada (pode ser criada manualmente)"
+    t.bigint "assigned_agent_id", comment: "Agente responsável pela oportunidade"
+    t.bigint "created_by_id", comment: "Usuário que criou a oportunidade"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "opportunity_id"], name: "index_opportunities_on_account_id_and_opportunity_id", unique: true
+    t.index ["account_id", "stage"], name: "index_opportunities_on_account_stage"
+    t.index ["account_id", "status"], name: "index_opportunities_on_account_status"
+    t.index ["account_id"], name: "index_opportunities_on_account_id"
+    t.index ["assigned_agent_id", "status"], name: "index_opportunities_on_agent_status"
+    t.index ["assigned_agent_id"], name: "index_opportunities_on_assigned_agent_id"
+    t.index ["contact_id"], name: "index_opportunities_on_contact_id"
+    t.index ["conversation_id"], name: "index_opportunities_on_conversation_id"
+    t.index ["created_at"], name: "index_opportunities_on_created_at"
+    t.index ["created_by_id"], name: "index_opportunities_on_created_by_id"
+    t.index ["deleted_at"], name: "index_opportunities_on_deleted_at"
+    t.index ["opportunity_id"], name: "index_opportunities_on_opportunity_id_unique", unique: true
+    t.index ["priority"], name: "index_opportunities_on_priority"
+    t.index ["stage"], name: "index_opportunities_on_stage"
+    t.index ["status"], name: "index_opportunities_on_status"
+  end
+
   create_table "platform_app_permissibles", force: :cascade do |t|
     t.bigint "platform_app_id", null: false
     t.string "permissible_type", null: false
@@ -1058,7 +1119,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
     t.text "header_text"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.jsonb "config", default: {"allowed_locales" => ["en"]}
+    t.jsonb "config", default: {"allowed_locales"=>["en"]}
     t.boolean "archived", default: false
     t.bigint "channel_web_widget_id"
     t.jsonb "ssl_settings", default: {}, null: false
@@ -1135,6 +1196,28 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
     t.index ["account_id"], name: "index_sla_policies_on_account_id"
   end
 
+  create_table "stage_transitions", force: :cascade do |t|
+    t.string "from_stage", comment: "Estágio anterior (pode ser nil para primeira transição)"
+    t.string "to_stage", null: false, comment: "Novo estágio"
+    t.text "notes", comment: "Motivo da mudança ou observações"
+    t.jsonb "metadata", default: {}, null: false, comment: "Dados adicionais (ex: automated: true)"
+    t.integer "transition_duration_seconds", comment: "Tempo que ficou no estágio anterior (em segundos)"
+    t.bigint "opportunity_id", null: false, comment: "Oportunidade que teve a transição"
+    t.bigint "account_id", null: false, comment: "Conta (tenant) da transição"
+    t.bigint "performed_by_id", comment: "Usuário que realizou a transição"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_stage_transitions_on_account_created_at"
+    t.index ["account_id", "to_stage"], name: "index_stage_transitions_on_account_to_stage"
+    t.index ["account_id"], name: "index_stage_transitions_on_account_id"
+    t.index ["created_at"], name: "index_stage_transitions_on_created_at"
+    t.index ["from_stage"], name: "index_stage_transitions_on_from_stage"
+    t.index ["opportunity_id", "created_at"], name: "index_stage_transitions_on_opportunity_created_at"
+    t.index ["opportunity_id"], name: "index_stage_transitions_on_opportunity_id"
+    t.index ["performed_by_id"], name: "index_stage_transitions_on_performed_by_id"
+    t.index ["to_stage"], name: "index_stage_transitions_on_to_stage"
+  end
+
   create_table "taggings", id: :serial, force: :cascade do |t|
     t.integer "tag_id"
     t.string "taggable_type"
@@ -1159,6 +1242,38 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
     t.integer "taggings_count", default: 0
     t.index "lower((name)::text) gin_trgm_ops", name: "tags_name_trgm_idx", using: :gin
     t.index ["name"], name: "index_tags_on_name", unique: true
+  end
+
+  create_table "tasks", force: :cascade do |t|
+    t.string "title", limit: 255, null: false, comment: "Título da tarefa"
+    t.text "description", comment: "Descrição detalhada da tarefa"
+    t.string "task_type", comment: "Tipo de tarefa (ex: Ligação, Email, WhatsApp, Follow-up)"
+    t.datetime "due_date", null: false, comment: "Data e hora de vencimento da tarefa"
+    t.datetime "completed_at", comment: "Data e hora de conclusão da tarefa"
+    t.text "result_notes", comment: "Notas após completar a tarefa"
+    t.integer "priority", default: 1, null: false, comment: "Prioridade: 0=low, 1=medium, 2=high, 3=urgent"
+    t.integer "status", default: 0, null: false, comment: "Status: 0=pending, 1=in_progress, 2=completed, 3=cancelled"
+    t.datetime "deleted_at", comment: "Soft delete - data de exclusão lógica"
+    t.bigint "opportunity_id", null: false, comment: "Oportunidade associada à tarefa"
+    t.bigint "account_id", null: false, comment: "Conta (tenant) da tarefa"
+    t.bigint "assigned_to_id", comment: "Usuário responsável pela tarefa"
+    t.bigint "created_by_id", comment: "Usuário que criou a tarefa"
+    t.bigint "contact_id", comment: "Contato relacionado (pode estar diretamente relacionado ao contato)"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "status"], name: "index_tasks_on_account_status"
+    t.index ["account_id"], name: "index_tasks_on_account_id"
+    t.index ["assigned_to_id", "status"], name: "index_tasks_on_assigned_to_status"
+    t.index ["assigned_to_id"], name: "index_tasks_on_assigned_to_id"
+    t.index ["contact_id"], name: "index_tasks_on_contact_id"
+    t.index ["created_at"], name: "index_tasks_on_created_at"
+    t.index ["created_by_id"], name: "index_tasks_on_created_by_id"
+    t.index ["deleted_at"], name: "index_tasks_on_deleted_at"
+    t.index ["due_date", "status"], name: "index_tasks_on_due_date_status"
+    t.index ["opportunity_id", "status"], name: "index_tasks_on_opportunity_status"
+    t.index ["opportunity_id"], name: "index_tasks_on_opportunity_id"
+    t.index ["priority"], name: "index_tasks_on_priority"
+    t.index ["status"], name: "index_tasks_on_status"
   end
 
   create_table "team_members", force: :cascade do |t|
@@ -1251,7 +1366,22 @@ ActiveRecord::Schema[7.1].define(version: 2025_10_22_152158) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "comments", "accounts"
+  add_foreign_key "comments", "users"
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "opportunities", "accounts"
+  add_foreign_key "opportunities", "contacts"
+  add_foreign_key "opportunities", "conversations"
+  add_foreign_key "opportunities", "users", column: "assigned_agent_id"
+  add_foreign_key "opportunities", "users", column: "created_by_id"
+  add_foreign_key "stage_transitions", "accounts"
+  add_foreign_key "stage_transitions", "opportunities"
+  add_foreign_key "stage_transitions", "users", column: "performed_by_id"
+  add_foreign_key "tasks", "accounts"
+  add_foreign_key "tasks", "contacts"
+  add_foreign_key "tasks", "opportunities"
+  add_foreign_key "tasks", "users", column: "assigned_to_id"
+  add_foreign_key "tasks", "users", column: "created_by_id"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
       after(:insert).
